@@ -207,7 +207,7 @@
         s1.onload=function(){
           try{
             var ff=new FFmpegWASM.FFmpeg();
-            ff.load({ coreURL: location.origin+'/static/ffmpeg/ffmpeg-core.js',
+            ff.load({ coreURL: location.origin+'/static/ffmpeg/esm/ffmpeg-core.js',
                       wasmURL: location.origin+'/static/ffmpeg/ffmpeg-core.wasm',
                       classWorkerURL: location.origin+'/static/ffmpeg/814.ffmpeg.js' })
               .then(function(){ mergeReady=ff; doMerge(); })
