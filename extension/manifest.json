@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "SosGrab Cookie Helper",
+  "name": "Hans Downloader Cookie Helper",
   "version": "1.0.0",
-  "description": "One-click cookie export for SosGrab \u2014 private reels support. Reads cookies only for facebook.com, instagram.com, tiktok.com, youtube.com.",
+  "description": "One-click cookie export for Hans Downloader \u2014 private reels support. Reads cookies only for facebook.com, instagram.com, tiktok.com, youtube.com.",
   "permissions": [
     "cookies",
     "clipboardWrite",
@@ -16,7 +16,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "SosGrab Cookie Helper"
+    "default_title": "Hans Downloader Cookie Helper"
   },
   "icons": {
     "128": "icon128.png"

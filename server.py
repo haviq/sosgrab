@@ -18,7 +18,7 @@ STATIC = BASE_DIR / "static"
 
 APP_VERSION = "1.0.0"
 
-app = FastAPI(title="SosGrab", docs_url=None, redoc_url=None, openapi_url=None)
+app = FastAPI(title="Hans Downloader", docs_url=None, redoc_url=None, openapi_url=None)
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 # ---- best-effort per-IP rate limit (resets per serverless instance) ----

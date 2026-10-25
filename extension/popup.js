@@ -85,7 +85,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
       copyToClipboard(header, function () {
         const s = document.getElementById("status");
         s.className = "status ok";
-        s.textContent = "Copied! (" + header.length + " chars) — paste into SosGrab Advanced.";
+        s.textContent = "Copied! (" + header.length + " chars) — paste into Hans Downloader Advanced.";
       });
     });
 
@@ -94,7 +94,7 @@ chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
         chrome.tabs.create({ url: "https://sosgrab.vercel.app/" });
         const s = document.getElementById("status");
         s.className = "status ok";
-        s.textContent = "Copied & SosGrab opened — paste into Advanced.";
+        s.textContent = "Copied & Hans Downloader opened — paste into Advanced.";
       });
     });
   });

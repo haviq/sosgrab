@@ -3,106 +3,151 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>SosGrab — Social Media Video Downloader</title>
-<meta name="description" content="Paste a TikTok, Instagram, YouTube, X or Facebook link and get direct download links. Nothing passes through the server." />
+<title>Hans Downloader — paste a link, get the file</title>
+<meta name="description" content="Hans Downloader: paste a TikTok, Instagram, YouTube, X, Facebook, Twitch or SoundCloud link and get direct download links. No login, no storage." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
 <style>
-  :root{--bg:#0d1117;--panel:#161b27;--line:#262d3d;--text:#f8fafc;--muted:#8a91a5;--accent:#f59e0b;--accent2:#22c55e;--err:#f87171}
+  :root{
+    --bg:#0b0b0c; --ink:#f2f2ef; --dim:#9b9b93; --line:#232323; --line2:#3a3a3a;
+    --acid:#d4ff3f; --panel:#111112;
+  }
   *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--text);font-family:'Poppins',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column}
-  .wrap{max-width:680px;width:100%;margin:0 auto;padding:0 20px}
-  header{padding:22px 0;border-bottom:1px solid var(--line)}
-  header .wrap{display:flex;align-items:center;justify-content:space-between}
-  .logo{font-weight:700;font-size:1.1rem}.logo span{color:var(--accent)}
-  main{flex:1;padding:52px 0}
-  h1{font-size:clamp(1.7rem,5vw,2.6rem);line-height:1.2;text-align:center}
-  h1 em{color:var(--accent);font-style:normal}
-  .sub{color:var(--muted);text-align:center;margin:14px auto 30px;max-width:480px;font-size:.95rem}
-  .chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:26px}
-  .chip{font-size:.78rem;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:4px 12px}
-  form{display:flex;gap:10px}
-  input{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:14px 16px;font-size:.95rem;outline:none;font-family:inherit}
-  input:focus{border-color:var(--accent)}
-  button{background:var(--accent);border:0;border-radius:10px;color:#0d1117;font-weight:600;padding:14px 22px;cursor:pointer;font-family:inherit;font-size:.95rem}
-  button:disabled{opacity:.55;cursor:wait}
-  .msg{margin-top:14px;font-size:.88rem;color:var(--muted);min-height:1.3em}
-  .msg.err{color:var(--err)}
-  .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:sp 1s linear infinite;vertical-align:-2px;margin-right:6px}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:'Archivo',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  .mono{font-family:'JetBrains Mono',monospace}
+  .wrap{max-width:880px;width:100%;margin:0 auto;padding:0 20px}
+  ::selection{background:var(--acid);color:#0b0b0c}
+  header{border-bottom:1px solid var(--line)}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;height:56px}
+  .mark{font-weight:800;letter-spacing:-.02em;font-size:1rem}
+  .mark i{font-style:normal;color:var(--acid)}
+  .mark small{font-family:'JetBrains Mono',monospace;font-weight:400;font-size:.62rem;color:var(--dim);margin-left:10px;letter-spacing:.08em}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--acid);margin-right:7px;animation:pulse 2s infinite}
+  @keyframes pulse{50%{opacity:.35}}
+  main{flex:1}
+  .hero{padding:64px 0 36px}
+  .kicker{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.14em;color:var(--dim);text-transform:uppercase;margin-bottom:18px}
+  .kicker b{color:var(--acid);font-weight:500}
+  h1{font-size:clamp(2.5rem,7.5vw,4.6rem);line-height:.98;font-weight:800;letter-spacing:-.03em;text-transform:uppercase}
+  h1 .hollow{color:transparent;-webkit-text-stroke:1.5px var(--ink)}
+  .sub{color:var(--dim);font-size:.95rem;max-width:520px;margin:18px 0 0;line-height:1.6}
+  .grab{display:flex;gap:0;margin-top:34px;border:1px solid var(--line2);background:var(--panel)}
+  .grab:focus-within{border-color:var(--acid)}
+  .grab input{flex:1;background:transparent;border:0;color:var(--ink);padding:17px 18px;font-size:1rem;font-family:'JetBrains Mono',monospace;outline:none;min-width:0}
+  .grab input::placeholder{color:#55554e}
+  .grab button{background:var(--acid);border:0;color:#0b0b0c;font-weight:700;padding:0 30px;cursor:pointer;font-family:'Archivo';font-size:1rem;letter-spacing:.02em;white-space:nowrap}
+  .grab button:hover{background:#e6ff70}
+  .grab button:disabled{opacity:.5;cursor:wait}
+  .msg{font-family:'JetBrains Mono',monospace;font-size:.78rem;margin-top:12px;min-height:1.4em;color:var(--dim)}
+  .msg.err{color:#ff6b5e}
+  .spin{display:inline-block;width:10px;height:10px;border:2px solid var(--acid);border-top-color:transparent;border-radius:50%;animation:sp 1s linear infinite;vertical-align:-1px;margin-right:8px}
   @keyframes sp{to{transform:rotate(360deg)}}
-  .card{margin-top:28px;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:none}
-  .thumb{width:100%;max-height:300px;object-fit:cover;display:block;background:#000}
-  .meta{padding:18px 20px 8px}
-  .meta .pf{font-size:.75rem;color:var(--accent);text-transform:uppercase;letter-spacing:.08em}
-  .meta h2{font-size:1.05rem;margin:4px 0 2px;font-weight:600}
-  .meta .up{color:var(--muted);font-size:.85rem}
-  .links{padding:12px 20px 20px;display:flex;flex-direction:column;gap:8px}
-  a.dl{display:flex;justify-content:space-between;align-items:center;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:11px 14px;color:var(--text);text-decoration:none;font-size:.9rem;transition:border-color .15s}
-  a.dl:hover{border-color:var(--accent)}
-  a.dl .q{font-weight:600}
-  a.dl .x{color:var(--muted);font-size:.8rem}
-  a.dl.audio .q{color:var(--accent2)}
-  .note{padding:0 20px 18px;color:var(--muted);font-size:.78rem}
-  .how{margin-top:44px;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-  .how div{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;font-size:.85rem;color:var(--muted)}
-  .how b{display:block;color:var(--text);margin-bottom:6px;font-size:.9rem}
-  footer{border-top:1px solid var(--line);padding:18px 0;color:var(--muted);font-size:.78rem;text-align:center}
-  @media(max-width:640px){form{flex-direction:column}.how{grid-template-columns:1fr}}
+  details{margin-top:14px;border:1px dashed var(--line2);padding:12px 14px}
+  summary{cursor:pointer;color:var(--dim);font-size:.8rem;font-family:'JetBrains Mono',monospace;user-select:none}
+  summary:hover{color:var(--ink)}
+  details p{color:var(--dim);font-size:.78rem;margin:10px 0;line-height:1.55}
+  details p b{color:var(--ink)}
+  textarea{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--ink);padding:10px;font-size:.75rem;font-family:'JetBrains Mono',monospace;outline:none;resize:vertical}
+  textarea:focus{border-color:var(--acid)}
+  .ticker{border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:46px;overflow:hidden;padding:10px 0;white-space:nowrap}
+  .ticker-in{display:inline-block;animation:tick 28s linear infinite;font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+  .ticker-in i{font-style:normal;color:var(--acid);margin:0 18px}
+  @keyframes tick{to{transform:translateX(-50%)}}
+  .result{display:none;margin-top:40px;border-top:2px solid var(--ink);padding-top:22px}
+  .r-head{display:flex;gap:18px;align-items:flex-start}
+  .r-thumb{width:132px;height:74px;object-fit:cover;border:1px solid var(--line);background:#000;display:block}
+  .r-pf{font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.1em;color:var(--acid);text-transform:uppercase}
+  .r-title{font-size:1.15rem;font-weight:700;margin:4px 0 2px;letter-spacing:-.01em}
+  .r-up{color:var(--dim);font-size:.83rem}
+  .links{margin-top:20px;border-top:1px solid var(--line)}
+  a.dl,.dl{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:.92rem;cursor:pointer;transition:background .12s}
+  a.dl:hover,.dl:hover{background:var(--panel)}
+  .q{font-weight:600}
+  .q em{font-style:normal;font-family:'JetBrains Mono',monospace;font-size:.62rem;color:var(--bg);background:var(--acid);padding:2px 6px;margin-left:10px;letter-spacing:.06em;vertical-align:1px}
+  .q em.no{background:#3a3a3a;color:var(--dim)}
+  .x{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--dim);white-space:nowrap}
+  .hintline{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--dim);padding:10px 4px}
+  .mergebtn{width:100%;margin-top:16px;background:var(--acid);border:0;color:#0b0b0c;font-weight:700;padding:14px;font-family:'Archivo';font-size:.95rem;cursor:pointer}
+  .mergebtn:disabled{opacity:.5;cursor:wait}
+  .mergebtn:hover{background:#e6ff70}
+  .steps{border-top:1px solid var(--line);margin-top:64px}
+  .steps .row{display:grid;grid-template-columns:70px 1fr 2fr;gap:16px;padding:20px 0;border-bottom:1px solid var(--line);align-items:baseline}
+  .steps .n{font-family:'JetBrains Mono',monospace;color:var(--acid);font-size:.8rem}
+  .steps b{font-size:1rem;font-weight:700;letter-spacing:-.01em}
+  .steps p{color:var(--dim);font-size:.87rem;line-height:1.6}
+  @media(max-width:640px){.steps .row{grid-template-columns:44px 1fr}.steps p{grid-column:2}}
+  footer{border-top:1px solid var(--line);padding:20px 0;color:var(--dim);font-size:.72rem;font-family:'JetBrains Mono',monospace}
+  footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 </style>
 </head>
 <body>
-<header><div class="wrap"><div class="logo">Sos<span>Grab</span></div><div style="color:var(--muted);font-size:.8rem">v1.0</div></div></header>
-<main class="wrap">
-  <h1>Paste a link. <em>Grab the video.</em></h1>
-  <p class="sub">Direct download links for TikTok, Instagram, YouTube, X, Facebook and more — extracted on the fly, delivered straight from the platform CDN.</p>
-  <div class="chips">
-    <span class="chip">TikTok</span><span class="chip">Instagram</span><span class="chip">YouTube</span>
-    <span class="chip">X / Twitter</span><span class="chip">Facebook</span><span class="chip">Twitch</span><span class="chip">SoundCloud</span>
+<header><div class="wrap">
+  <div class="mark">HANS<i>⬇</i>DOWNLOADER <small>/ MEDIA EXTRACTOR</small></div>
+  <div class="mono" style="font-size:.7rem;color:var(--dim)"><span class="dot"></span>ONLINE</div>
+</div></header>
+
+<main>
+  <div class="wrap hero">
+    <div class="kicker">TIKTOK · IG · YT · X · FB · TWITCH · SOUNDCLOUD <b>+ 1000 SITES</b></div>
+    <h1>Paste link.<br/><span class="hollow">Get file.</span></h1>
+    <p class="sub">One input, direct CDN links, zero login for public posts. Separate video/audio streams are merged automatically in your browser — you always get one file with sound.</p>
+    <form id="f">
+      <div class="grab">
+        <input id="url" placeholder="https:// paste the link here" autocomplete="off" spellcheck="false" />
+        <button id="go" type="submit">GRAB ↧</button>
+      </div>
+    </form>
+    <div class="msg" id="msg"></div>
+    <details id="advBox">
+      <summary>ADVANCED — private reels (bring your own cookie)</summary>
+      <p>Private posts (and most Facebook reels) need your login session. Log in on the platform, press <b>F12 → Network</b>, refresh, click the first request and copy the whole <b>Cookie</b> header. It is used for one extraction and <b>never stored on the server</b>.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:.72rem;color:var(--dim);margin-bottom:10px;font-family:'JetBrains Mono',monospace">
+        <div>FB → needs <b style="color:var(--ink)">c_user</b> + <b style="color:var(--ink)">xs</b></div>
+        <div>IG → needs <b style="color:var(--ink)">sessionid</b></div>
+        <div>TikTok → <b style="color:var(--ink)">sessionid</b></div>
+        <div>YT → rarely needed</div>
+      </div>
+      <textarea id="cookies" rows="2" placeholder="c_user=1234; xs=...; sessionid=..."></textarea>
+      <div class="msg" id="cookieHint" style="margin-top:8px"></div>
+    </details>
   </div>
-  <form id="f">
-    <input id="url" placeholder="https://www.tiktok.com/@user/video/..." autocomplete="off" />
-    <button id="go" type="submit">Grab</button>
-  </form>
-  <div class="msg" id="msg"></div>
-  <details style="margin-top:12px" id="advBox">
-    <summary style="color:var(--muted);font-size:.85rem;cursor:pointer;user-select:none">Advanced — private reels (bring your own cookie)</summary>
-    <p style="color:var(--muted);font-size:.78rem;margin:10px 0 8px">
-      Private posts (and most Facebook reels) need your login session. Log in to the platform in your browser, then
-      press <b>F12 → Network</b>, refresh the page, click the first request to the site, and copy the whole
-      <code>Cookie</code> request header. It is used for this one extraction and <b>never stored on the server</b>.
-    </p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.75rem;color:var(--muted);margin-bottom:10px">
-      <div><b style="color:var(--text)">Facebook</b> — cookie harus memuat <code>c_user=</code> dan <code>xs=</code></div>
-      <div><b style="color:var(--text)">Instagram</b> — harus memuat <code>sessionid=</code></div>
-      <div><b style="color:var(--text)">TikTok</b> — <code>sessionid_tt=</code> atau <code>sessionid=</code></div>
-      <div><b style="color:var(--text)">YouTube</b> — jarang perlu; pakai bila muncul "confirm you're not a bot"</div>
+
+  <div class="ticker"><div class="ticker-in" id="tick">TIKTOK <i>///</i> INSTAGRAM <i>///</i> YOUTUBE <i>///</i> X-TWITTER <i>///</i> FACEBOOK <i>///</i> TWITCH <i>///</i> SOUNDCLOUD <i>///</i> REDDIT <i>///</i> DAILYMOTION <i>///</i> VK <i>///</i> PINTEREST <i>///</i> +1000 SITES <i>///</i> TIKTOK <i>///</i> INSTAGRAM <i>///</i> YOUTUBE <i>///</i> X-TWITTER <i>///</i> FACEBOOK <i>///</i> TWITCH <i>///</i> SOUNDCLOUD <i>///</i> REDDIT <i>///</i> DAILYMOTION <i>///</i> VK <i>///</i> PINTEREST <i>///</i> +1000 SITES <i>///</i> </div></div>
+
+  <div class="wrap">
+    <div class="result" id="card">
+      <div class="r-head">
+        <img id="thumb" class="r-thumb" alt="" />
+        <div>
+          <div class="r-pf" id="pf"></div>
+          <div class="r-title" id="title"></div>
+          <div class="r-up" id="up"></div>
+        </div>
+      </div>
+      <div class="links" id="links"></div>
+      <div id="mergeBox" style="display:none">
+        <button id="mergeBtn" class="mergebtn">MERGE VIDEO + AUDIO ↧</button>
+        <div class="msg" id="mergeMsg"></div>
+      </div>
+      <div class="hintline">Links point straight at the platform CDN — right-click → save-as if it plays instead of downloading. Grab only what you own or have rights to.</div>
     </div>
-    <textarea id="cookies" rows="2" placeholder="c_user=1234; xs=3a:abcdef...; datr=..." style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;font-size:.8rem;font-family:monospace;outline:none;resize:vertical"></textarea>
-    <div class="msg" id="cookieHint" style="margin-top:8px"></div>
-  </details>
-  <div class="card" id="card">
-    <img id="thumb" class="thumb" alt="" />
-    <div class="meta">
-      <div class="pf" id="pf"></div>
-      <h2 id="title"></h2>
-      <div class="up" id="up"></div>
+
+    <div class="steps">
+      <div class="row"><div class="n">01</div><b>PASTE</b><p>Any public video URL from the supported platforms. Private posts work too with your own session cookie — see Advanced.</p></div>
+      <div class="row"><div class="n">02</div><b>EXTRACT</b><p>yt-dlp resolves every available stream. When the platform splits video and audio, Hans merges them in your browser — one MP4, with sound.</p></div>
+      <div class="row"><div class="n">03</div><b>DOWNLOAD</b><p>Files come straight from the platform CDN. Nothing is stored, logged or re-uploaded. Pick your resolution, done.</p></div>
     </div>
-    <div class="links" id="links"></div>
-    <div class="links" id="mergeBox" style="display:none;padding-top:0">
-      <button id="mergeBtn" style="background:var(--accent2);color:#0d1117;font-weight:600;border:0;border-radius:10px;padding:12px;width:100%;cursor:pointer;font-family:inherit">
-        🎚 Merge video + audio into one MP4 (in your browser)
-      </button>
-      <div class="msg" id="mergeMsg" style="margin-top:8px"></div>
-    </div>
-    <div class="note">Links open the platform CDN directly — use your browser's save function if it plays instead of downloading. Only grab content you own or have the rights to use.</div>
-  </div>
-  <div class="how">
-    <div><b>1 · Paste</b>Any public video URL from the supported platforms.</div>
-    <div><b>2 · Extract</b>SosGrab resolves the direct CDN links with yt-dlp — no watermarks where the platform provides a clean source.</div>
-    <div><b>3 · Save</b>Pick a quality and download straight from the platform. Fast, anonymous, zero storage.</div>
   </div>
 </main>
-<footer>For personal use — respect each platform's terms and content copyrights. · SosGrab</footer>
+
+<footer><div class="wrap">
+  <span>HANS DOWNLOADER © 2026 — RUNS ON YOUR LINKS, NOT YOUR DATA</span>
+  <span>personal use · respect platform terms &amp; copyright</span>
+</div></footer>
+
 <script>
 (function(){
   var $=function(id){return document.getElementById(id)};
