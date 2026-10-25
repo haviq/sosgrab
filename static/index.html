@@ -139,25 +139,46 @@
         $('title').textContent=d.title;
         $('up').textContent=d.uploader?('by '+d.uploader):'';
         var h='';
-        var videoOnly=null, audioOnly=null, combined=false;
+        var videoOnlyList=[], audioOnly=null, combined=false;
+        var silentRows='';
         d.formats.forEach(function(f){
           if(f.video && f.has_sound) combined=true;
-          if(f.video && !f.has_sound && !videoOnly) videoOnly=f;
           if(!f.video && !audioOnly) audioOnly=f;
           var icon = (f.video && f.has_sound) ? '🔊' : (f.video ? '🔇' : '♪');
-          h+='<a class="dl'+(f.video?'':' audio')+'" href="'+f.url+'" target="_blank" rel="noopener">'+
-             '<span class="q">'+icon+' '+f.label+'</span>'+
-             '<span class="x">'+(f.ext||'').toUpperCase()+fmtSize(f.filesize)+' ↧</span></a>';
+          if(f.video && !f.has_sound){
+            // resolution picker row: clicking merges THIS video with the audio
+            videoOnlyList.push(f);
+            silentRows+='<a class="dl" href="javascript:void(0)" data-res="'+videoOnlyList.length+'">'+
+               '<span class="q">'+icon+' '+f.label+' · auto sound</span>'+
+               '<span class="x">'+(f.ext||'').toUpperCase()+fmtSize(f.filesize)+' ↧</span></a>';
+          } else {
+            h+='<a class="dl'+(f.video?'':' audio')+'" href="'+f.url+'" target="_blank" rel="noopener">'+
+               '<span class="q">'+icon+' '+f.label+'</span>'+
+               '<span class="x">'+(f.ext||'').toUpperCase()+fmtSize(f.filesize)+' ↧</span></a>';
+          }
         });
-        $('links').innerHTML=h||'<p style="color:var(--muted)">No downloadable formats found.</p>';
-        // show merge button only when the platform gave separate streams
+        var h2='';
+        if(videoOnlyList.length && audioOnly){ h2='<p style="color:var(--muted);font-size:.8rem;margin:0 0 8px">Pick a resolution — it is merged with the sound and downloaded as one MP4:</p>'+silentRows; }
+        $('links').innerHTML=(h2||'')+(h||'')||'<p style="color:var(--muted)">No downloadable formats found.</p>';
+        // show merge section only when the platform gave separate streams
         var mb=$('mergeBox');
-        if(!combined && videoOnly && audioOnly){
+        if(!combined && videoOnlyList.length && audioOnly){
           mb.style.display='flex';
           $('mergeMsg').textContent='';
-          setupMerge(videoOnly, audioOnly);
-          // AUTO: merge + download the combined MP4 without any extra click
+          setupMerge(videoOnlyList[0], audioOnly);
+          // AUTO: merge + download the highest resolution without any extra click
           setTimeout(function(){ $('mergeBtn').click(); }, 300);
+          // resolution picker: each row re-runs the merge with that video
+          $('links').querySelectorAll('[data-res]').forEach(function(a){
+            a.addEventListener('click', function(){
+              var pick = videoOnlyList[+a.dataset.res - 1];
+              if(!pick) return;
+              $('mergeMsg').textContent='';
+              setupMerge(pick, audioOnly);
+              setTimeout(function(){ $('mergeBtn').click(); }, 200);
+              $('card').scrollIntoView({behavior:'smooth',block:'start'});
+            });
+          });
         } else { mb.style.display='none'; }
       })
       .catch(function(){ btn.disabled=false; msg.className='msg err'; msg.textContent='Could not reach the service.'; });
