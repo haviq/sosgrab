@@ -38,9 +38,11 @@
   .grab:focus-within{border-color:var(--acid)}
   .grab input{flex:1;background:transparent;border:0;color:var(--ink);padding:17px 18px;font-size:1rem;font-family:'JetBrains Mono',monospace;outline:none;min-width:0}
   .grab input::placeholder{color:#55554e}
-  .grab button{background:var(--acid);border:0;color:#0b0b0c;font-weight:700;padding:0 30px;cursor:pointer;font-family:'Archivo';font-size:1rem;letter-spacing:.02em;white-space:nowrap}
-  .grab button:hover{background:#e6ff70}
-  .grab button:disabled{opacity:.5;cursor:wait}
+  .pastebtn{background:var(--panel);border:0;border-right:1px solid var(--line2);color:var(--dim);padding:0 18px;cursor:pointer;font-size:.95rem}
+  .pastebtn:hover{color:var(--acid)}
+  .grab button#go{background:var(--acid);border:0;color:#0b0b0c;font-weight:700;padding:0 30px;cursor:pointer;font-family:'Archivo';font-size:1rem;letter-spacing:.02em;white-space:nowrap}
+  .grab button#go:hover{background:#e6ff70}
+  .grab button#go:disabled{opacity:.5;cursor:wait}
   .msg{font-family:'JetBrains Mono',monospace;font-size:.78rem;margin-top:12px;min-height:1.4em;color:var(--dim)}
   .msg.err{color:#ff6b5e}
   .spin{display:inline-block;width:10px;height:10px;border:2px solid var(--acid);border-top-color:transparent;border-radius:50%;animation:sp 1s linear infinite;vertical-align:-1px;margin-right:8px}
@@ -73,7 +75,17 @@
   .mergebtn{width:100%;margin-top:16px;background:var(--acid);border:0;color:#0b0b0c;font-weight:700;padding:14px;font-family:'Archivo';font-size:.95rem;cursor:pointer}
   .mergebtn:disabled{opacity:.5;cursor:wait}
   .mergebtn:hover{background:#e6ff70}
-  .steps{border-top:1px solid var(--line);margin-top:64px}
+  .hist{margin-top:56px;border-top:1px solid var(--line)}
+  .hist-head{display:flex;justify-content:space-between;align-items:center;padding:18px 0 8px}
+  .hist-clear{background:none;border:1px solid var(--line2);color:var(--dim);font-size:.65rem;padding:4px 12px;cursor:pointer;font-family:'JetBrains Mono',monospace}
+  .hist-clear:hover{color:var(--ink);border-color:var(--acid)}
+  .hist-row{display:flex;gap:14px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line);cursor:pointer}
+  .hist-row:hover{background:var(--panel)}
+  .hist-row img{width:64px;height:36px;object-fit:cover;border:1px solid var(--line);background:#000}
+  .hist-t{font-size:.88rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:420px}
+  .hist-p{font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--dim)}
+  .hist-go{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:.65rem;color:var(--acid);white-space:nowrap}
+  .steps{border-top:1px solid var(--line);margin-top:56px}
   .steps .row{display:grid;grid-template-columns:70px 1fr 2fr;gap:16px;padding:20px 0;border-bottom:1px solid var(--line);align-items:baseline}
   .steps .n{font-family:'JetBrains Mono',monospace;color:var(--acid);font-size:.8rem}
   .steps b{font-size:1rem;font-weight:700;letter-spacing:-.01em}
@@ -97,6 +109,7 @@
     <form id="f">
       <div class="grab">
         <input id="url" placeholder="https:// paste the link here" autocomplete="off" spellcheck="false" />
+        <button id="pasteBtn" class="pastebtn" type="button" title="Paste from clipboard">📋</button>
         <button id="go" type="submit">GRAB ↧</button>
       </div>
     </form>
@@ -135,6 +148,14 @@
       <div class="hintline">Links point straight at the platform CDN — right-click → save-as if it plays instead of downloading. Grab only what you own or have rights to.</div>
     </div>
 
+    <div class="hist" id="histSection" hidden>
+      <div class="hist-head">
+        <div class="kicker" style="margin:0">RECENT GRABS — <b>STORED IN YOUR BROWSER ONLY</b></div>
+        <button id="histClear" class="hist-clear" type="button">CLEAR</button>
+      </div>
+      <div id="histList"></div>
+    </div>
+
     <div class="steps">
       <div class="row"><div class="n">01</div><b>PASTE</b><p>Any public video URL from the supported platforms. Private posts work too with your own session cookie — see Advanced.</p></div>
       <div class="row"><div class="n">02</div><b>EXTRACT</b><p>yt-dlp resolves every available stream. When the platform splits video and audio, Hans merges them in your browser — one MP4, with sound.</p></div>
@@ -153,13 +174,70 @@
   var $=function(id){return document.getElementById(id)};
   function fmtSize(b){ if(!b) return ''; var u=['B','KB','MB','GB'],i=0; while(b>=1024&&i<3){b/=1024;i++} return ' · '+(b>=10?Math.round(b):b.toFixed(1))+' '+u[i]; }
   function fmtDur(s){ if(!s) return ''; var m=Math.floor(s/60),x=Math.round(s%60); return m+':'+(x<10?'0':'')+x; }
+  function saveBlob(data, name, type){
+    var blob=new Blob([data], {type:type});
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  // ---- grab history (localStorage only) ----
+  var HKEY='hans_history';
+  function histGet(){ try{ return JSON.parse(localStorage.getItem(HKEY)||'[]'); }catch(e){ return []; } }
+  function histSave(d, srcUrl){
+    try{
+      var arr=histGet();
+      arr.unshift({ t: Date.now(), url: srcUrl, platform: d.platform||'', title: (d.title||'media').slice(0,90), thumb: d.thumbnail||'' });
+      var seen={}, out=[];
+      arr.forEach(function(x){ if(!seen[x.url]){ seen[x.url]=1; out.push(x); } });
+      localStorage.setItem(HKEY, JSON.stringify(out.slice(0,12)));
+      renderHistory();
+    }catch(e){}
+  }
+  function renderHistory(){
+    var sec=$('histSection'), list=$('histList');
+    if(!sec||!list) return;
+    var arr=histGet();
+    sec.hidden = !arr.length;
+    var h='';
+    arr.forEach(function(x, i){
+      h+='<div class="hist-row" data-i="'+i+'">'+
+         (x.thumb?'<img src="'+x.thumb+'" alt="" />':'<div style="width:64px;height:36px;background:var(--line)"></div>')+
+         '<div><div class="hist-t">'+String(x.title).replace(/</g,'&lt;')+'</div>'+
+         '<div class="hist-p">'+String(x.platform).toUpperCase()+' · '+new Date(x.t).toLocaleString()+'</div></div>'+
+         '<div class="hist-go">GRAB AGAIN ↧</div></div>';
+    });
+    list.innerHTML=h;
+    list.querySelectorAll('.hist-row').forEach(function(row){
+      row.addEventListener('click', function(){
+        var x=histGet()[+row.dataset.i];
+        if(!x) return;
+        $('url').value=x.url;
+        document.getElementById('f').dispatchEvent(new Event('submit', {cancelable:true}));
+      });
+    });
+  }
+  renderHistory();
+  document.getElementById('histClear').addEventListener('click', function(){ try{ localStorage.removeItem(HKEY); }catch(e){} renderHistory(); });
+
+  // ---- clipboard paste ----
+  var pb=$('pasteBtn');
+  if(pb) pb.addEventListener('click', function(){
+    navigator.clipboard.readText().then(function(t){
+      t=(t||'').trim();
+      if(!/^https?:\/\//i.test(t)){ $('msg').textContent='Clipboard does not contain a link.'; return; }
+      $('url').value=t;
+      document.getElementById('f').dispatchEvent(new Event('submit', {cancelable:true}));
+    }).catch(function(){ $('msg').textContent='Clipboard blocked — press Ctrl+V into the field instead.'; });
+  });
+
   document.getElementById('f').addEventListener('submit', function(e){
     e.preventDefault();
     var url=$('url').value.trim();
     var msg=$('msg'), btn=$('go');
     msg.className='msg'; msg.innerHTML='';
     if(!url){ msg.textContent='Paste a link first.'; return; }
-    // soft pre-check: platform vs cookie keys (non-blocking warning)
     var hint=$('cookieHint'), ck=$('cookies').value.trim();
     hint.textContent='';
     var needs={facebook:['c_user','xs'],'fb.watch':['c_user','xs'],'instagram':['sessionid'],'tiktok':['sessionid']};
@@ -191,7 +269,6 @@
           if(!f.video && !audioOnly) audioOnly=f;
           var icon = (f.video && f.has_sound) ? '🔊' : (f.video ? '🔇' : '♪');
           if(f.video && !f.has_sound){
-            // resolution picker row: clicking merges THIS video with the audio
             videoOnlyList.push(f);
             silentRows+='<a class="dl" href="javascript:void(0)" data-res="'+videoOnlyList.length+'">'+
                '<span class="q">'+icon+' '+f.label+' · auto sound</span>'+
@@ -205,15 +282,20 @@
         var h2='';
         if(videoOnlyList.length && audioOnly){ h2='<p style="color:var(--muted);font-size:.8rem;margin:0 0 8px">Pick a resolution — it is merged with the sound and downloaded as one MP4:</p>'+silentRows; }
         $('links').innerHTML=(h2||'')+(h||'')||'<p style="color:var(--muted)">No downloadable formats found.</p>';
-        // show merge section only when the platform gave separate streams
+        // MP3 export row whenever an audio stream exists
+        if(audioOnly){
+          var mp=document.createElement('a');
+          mp.className='dl'; mp.href='javascript:void(0)';
+          mp.innerHTML='<span class="q">♪ EXTRACT MP3 192kbps from this audio</span><span class="x">MP3 ↧</span>';
+          mp.addEventListener('click', function(){ extractMP3(audioOnly); });
+          $('links').appendChild(mp);
+        }
         var mb=$('mergeBox');
         if(!combined && videoOnlyList.length && audioOnly){
           mb.style.display='flex';
           $('mergeMsg').textContent='';
           setupMerge(videoOnlyList[0], audioOnly);
-          // AUTO: merge + download the highest resolution without any extra click
           setTimeout(function(){ $('mergeBtn').click(); }, 300);
-          // resolution picker: each row re-runs the merge with that video
           $('links').querySelectorAll('[data-res]').forEach(function(a){
             a.addEventListener('click', function(){
               var pick = videoOnlyList[+a.dataset.res - 1];
@@ -225,11 +307,61 @@
             });
           });
         } else { mb.style.display='none'; }
+        histSave(d, url);
       })
       .catch(function(){ btn.disabled=false; msg.className='msg err'; msg.textContent='Could not reach the service.'; });
   });
-  // ---- in-browser merge (ffmpeg.wasm 0.11) for platforms that split video/audio ----
-  var mergeReady=null;
+
+  // ---- shared ffmpeg engine loader ----
+  var mergeReady=null, ffLoadPromise=null;
+  function ensureFF(mmsg){
+    if(mergeReady) return Promise.resolve(mergeReady);
+    if(ffLoadPromise) return ffLoadPromise;
+    ffLoadPromise = new Promise(function(resolve, reject){
+      mmsg.innerHTML='<span class="spin"></span>Loading media engine (~24 MB, first time only)...';
+      var s1=document.createElement('script'); s1.src='/static/ffmpeg/ffmpeg.js';
+      s1.onload=function(){
+        try{
+          var ff=new FFmpegWASM.FFmpeg();
+          ff.load({ coreURL: location.origin+'/static/ffmpeg/ffmpeg-core.js',
+                    wasmURL: location.origin+'/static/ffmpeg/ffmpeg-core.wasm',
+                    classWorkerURL: location.origin+'/static/ffmpeg/814.ffmpeg.js?v=2' })
+            .then(function(){ mergeReady=ff; resolve(ff); })
+            .catch(reject);
+        }catch(e){ reject(e); }
+      };
+      s1.onerror=function(){ reject(new Error('network')); };
+      document.head.appendChild(s1);
+    });
+    return ffLoadPromise;
+  }
+
+  // ---- MP3 extraction ----
+  function extractMP3(audioOnly){
+    var mmsg=$('mergeMsg');
+    mmsg.className='msg';
+    ensureFF(mmsg).then(function(ff){
+      mmsg.textContent='Downloading audio...';
+      fetch(audioOnly.url).then(function(r){ if(!r.ok) throw new Error('audio fetch '+r.status); return r.arrayBuffer(); })
+        .then(function(buf){
+          ff.writeFile('a.src', new Uint8Array(buf));
+          mmsg.textContent='Converting to MP3 192kbps...';
+          return ff.exec(['-i','a.src','-vn','-c:a','libmp3lame','-b:a','192k','out.mp3'])
+            .then(function(){ return ff.readFile('out.mp3'); });
+        }).then(function(data){
+          saveBlob(data, ($('title').textContent||'hans-downloader')+'.mp3', 'audio/mpeg');
+          mmsg.textContent='✅ MP3 saved. Check your downloads.';
+        }).catch(function(e){
+          mmsg.className='msg err';
+          mmsg.textContent='MP3 failed: '+(e&&e.message||e);
+        });
+    }).catch(function(e){
+      mmsg.className='msg err';
+      mmsg.textContent='Engine failed to load: '+(e&&e.message||e);
+    });
+  }
+
+  // ---- in-browser merge for platforms that split video/audio ----
   function setupMerge(videoOnly, audioOnly){
     var btn=$('mergeBtn'), mmsg=$('mergeMsg');
     btn.onclick=function(){
@@ -238,14 +370,13 @@
         mmsg.textContent='Your browser blocked the in-browser merger (SharedArrayBuffer). Update Brave/Chrome to the latest version, or download the two files below and merge locally.';
         return;
       }
-      function doMerge(){
+      function doMerge(ff){
         mmsg.className='msg'; mmsg.textContent='Downloading video & audio...';
         btn.disabled=true;
         Promise.all([
           fetch(videoOnly.url).then(function(r){ if(!r.ok) throw new Error('video fetch '+r.status); return r.arrayBuffer(); }),
           fetch(audioOnly.url).then(function(r){ if(!r.ok) throw new Error('audio fetch '+r.status); return r.arrayBuffer(); })
         ]).then(function(bufs){
-          var ff=mergeReady;
           return Promise.all([
             ff.writeFile('v.mp4', new Uint8Array(bufs[0])),
             ff.writeFile('a.m4a', new Uint8Array(bufs[1]))
@@ -254,11 +385,7 @@
             return ff.exec(['-i','v.mp4','-i','a.m4a','-c','copy','-movflags','faststart','out.mp4']);
           }).then(function(){ return ff.readFile('out.mp4'); });
         }).then(function(data){
-          var blob=new Blob([data], {type:'video/mp4'});
-          var a=document.createElement('a');
-          a.href=URL.createObjectURL(blob);
-          a.download=(document.getElementById('title').textContent||'sosgrab')+'.mp4';
-          document.body.appendChild(a); a.click(); a.remove();
+          saveBlob(data, ($('title').textContent||'hans-downloader')+'.mp4', 'video/mp4');
           mmsg.textContent='✅ Merged! Check your downloads.';
           btn.disabled=false;
         }).catch(function(e){
@@ -267,22 +394,8 @@
           btn.disabled=false;
         });
       }
-      if(!mergeReady){
-        mmsg.innerHTML='<span class="spin"></span>Loading merger (~32 MB, first time only)...';
-        var s1=document.createElement('script'); s1.src='/static/ffmpeg/ffmpeg.js';
-        s1.onload=function(){
-          try{
-            var ff=new FFmpegWASM.FFmpeg();
-            ff.load({ coreURL: location.origin+'/static/ffmpeg/esm/ffmpeg-core.js',
-                      wasmURL: location.origin+'/static/ffmpeg/ffmpeg-core.wasm',
-                      classWorkerURL: location.origin+'/static/ffmpeg/814.ffmpeg.js?v=2' })
-              .then(function(){ mergeReady=ff; doMerge(); })
-              .catch(function(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed to load: '+(e&&e.message||e); });
-          }catch(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed: '+(e&&e.message||e); }
-        };
-        s1.onerror=function(){ mmsg.className='msg err'; mmsg.textContent='Could not load the merger (network).'; };
-        document.head.appendChild(s1);
-      } else { doMerge(); }
+      ensureFF(mmsg).then(function(ff){ doMerge(ff); })
+        .catch(function(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed to load: '+(e&&e.message||e); });
     };
   }
 })();
