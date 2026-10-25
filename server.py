@@ -302,7 +302,7 @@ def api_resolve(req: ResolveReq, request: Request):
         elif video:
             label = f"{f.get('height') or '?'}p (NO SOUND)"
         else:
-            label = f"Audio {f.get('abr') or ''}kbps".replace("  ", " ")
+            label = ("Audio " + str(f.get("abr") or "") + "kbps").replace("  ", " ").replace("kbps", "") if not f.get("abr") else f"Audio {f.get('abr')}kbps"
         key = (label, f.get("ext"))
         if key in seen:
             continue
