@@ -209,7 +209,7 @@
             var ff=new FFmpegWASM.FFmpeg();
             ff.load({ coreURL: location.origin+'/static/ffmpeg/esm/ffmpeg-core.js',
                       wasmURL: location.origin+'/static/ffmpeg/ffmpeg-core.wasm',
-                      classWorkerURL: location.origin+'/static/ffmpeg/814.ffmpeg.js' })
+                      classWorkerURL: location.origin+'/static/ffmpeg/814.ffmpeg.js?v=2' })
               .then(function(){ mergeReady=ff; doMerge(); })
               .catch(function(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed to load: '+(e&&e.message||e); });
           }catch(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed: '+(e&&e.message||e); }
