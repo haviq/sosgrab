@@ -1,0 +1,17 @@
+<!DOCTYPE html><html><body><pre id="out">testing...</pre>
+<script>
+(function(){
+  var out = function(m){ document.getElementById('out').textContent += '\n' + m; };
+  // Test 1: importScripts ST core in a plain worker (blob)
+  var code = "importScripts('/static/ffmpeg/ffmpeg-core.js'); postMessage('CORE-IMPORT-OK v='+JSON.stringify(Object.keys(self).slice(0,3)));" ;
+  try {
+    var w = new Worker(URL.createObjectURL(new Blob([code], {type:'application/javascript'})));
+    w.onmessage = function(e){ out('worker: ' + e.data); };
+    w.onerror = function(e){ out('worker ERROR: ' + e.message + ' (' + e.filename + ':' + e.lineno + ')'); };
+  } catch(e){ out('worker create error: ' + e.message); }
+  // Test 2: does the core JS parse at all (fetch + size)
+  fetch('/static/ffmpeg/ffmpeg-core.js').then(function(r){ return r.text(); }).then(function(t){
+    out('core.js fetched: ' + t.length + ' chars, starts: ' + t.slice(0, 40));
+  });
+})();
+</script></body></html>
