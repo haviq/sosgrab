@@ -156,6 +156,8 @@
           mb.style.display='flex';
           $('mergeMsg').textContent='';
           setupMerge(videoOnly, audioOnly);
+          // AUTO: merge + download the combined MP4 without any extra click
+          setTimeout(function(){ $('mergeBtn').click(); }, 300);
         } else { mb.style.display='none'; }
       })
       .catch(function(){ btn.disabled=false; msg.className='msg err'; msg.textContent='Could not reach the service.'; });
