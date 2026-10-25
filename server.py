@@ -123,6 +123,96 @@ def platform_of(url: str) -> str:
     return "Web"
 
 
+# ---- login-less fallbacks for stubborn platforms ----
+def _jstr(s):
+    """Unescape a JSON-escaped string scraped from an HTML page."""
+    return (s.replace('\u0026', '&').replace('\/', '/')
+             .replace('\u0025', '%').replace('\u003A', ':'))
+
+
+def _ig_embed(url):
+    """Public embed page often carries the video without any login."""
+    m = re.search(r"instagram\.com/(?:p|reel|reels|tv)/([\w-]+)", url)
+    if not m:
+        return None
+    r = httpx.get("https://www.instagram.com/p/" + m.group(1) + "/embed/captioned",
+                  headers={"User-Agent": CHROME_UA}, timeout=20, follow_redirects=True)
+    if r.status_code != 200:
+        return None
+    vm = re.search(r'"video_url":"((?:[^"\]|\.)*)"', r.text)
+    if not vm:
+        return None
+    return {
+        "platform": "Instagram",
+        "title": "Instagram video",
+        "thumbnail": None,
+        "duration": None,
+        "uploader": "instagram.com/p/" + m.group(1),
+        "formats": [{"label": "MP4 with sound (embed)", "ext": "mp4",
+                     "url": _jstr(vm.group(1)), "filesize": None,
+                     "video": True, "has_sound": True}],
+    }
+
+
+def _b36(n):
+    chars = "0123456789abcdefghijklmnopqrstuvwxyz"
+    out = ""
+    while n:
+        n, r = divmod(n, 36)
+        out = chars[r] + out
+    return out
+
+
+def _tw_syndication(url):
+    """Twitter syndication API: public tweets, no login, video variants."""
+    m = re.search(r"/(?:status|statuses)/(\d+)", url)
+    if not m:
+        return None
+    tid = m.group(1)
+    token = re.sub(r"(2+)$", lambda mm: "X" * len(mm.group(1)),
+                   _b36(int(int(tid) / 1e15 * __import__("math").pi)))
+    r = httpx.get("https://cdn.syndication.twimg.com/tweet-result",
+                  params={"id": tid, "token": token, "lang": "en"},
+                  headers={"User-Agent": CHROME_UA}, timeout=20)
+    if r.status_code != 200:
+        return None
+    try:
+        data = r.json()
+    except Exception:
+        return None
+    media = data.get("mediaDetails") or []
+    vids = []
+    for med in media:
+        for v in (med.get("video_info") or {}).get("variants") or []:
+            if v.get("content_type") == "video/mp4" and v.get("url"):
+                vids.append(v)
+    if not vids:
+        return None
+    vids.sort(key=lambda v: -(v.get("bitrate") or 0))
+    formats = [{"label": f"MP4 {round((v.get('bitrate') or 0)/1000)}kbps with sound",
+                "ext": "mp4", "url": v["url"],
+                "filesize": None, "video": True, "has_sound": True}
+               for v in vids]
+    return {
+        "platform": "X (Twitter)",
+        "title": (data.get("text") or "tweet")[:120],
+        "thumbnail": (media[0].get("media_url_https") if media else None),
+        "duration": None,
+        "uploader": "@" + str((data.get("user") or {}).get("screen_name", "twitter")),
+        "formats": formats,
+    }
+
+
+def _fallback_for(url, platform_name):
+    try:
+        if platform_name == "Instagram":
+            return _ig_embed(url)
+        if platform_name.startswith("X"):
+            return _tw_syndication(url)
+    except Exception:
+        return None
+    return None
+
 @app.post("/api/resolve")
 def api_resolve(req: ResolveReq, request: Request):
     ip = request.client.host if request.client else "x"
@@ -173,6 +263,9 @@ def api_resolve(req: ResolveReq, request: Request):
                 try: os.unlink(jar)
                 except Exception: pass
     except Exception as e:
+        fb = _fallback_for(url, platform_of(url))
+        if fb:
+            return fb
         msg = str(e)
         if "Cannot parse data" in msg:
             raise HTTPException(403, "Facebook refused the request even with your cookie. Re-login to Facebook, copy a FRESH cookie (F12 → Network → first request → Cookie header) and try again. The session may have expired or been logged out remotely.")
@@ -193,11 +286,13 @@ def api_resolve(req: ResolveReq, request: Request):
         if not f.get("url"):
             continue
         v, a = f.get("vcodec"), f.get("acodec")
-        video = v not in (None, "none")
-        audio = a not in (None, "none")
-        if v == "" and a == "":
-            # FB progressive sources report no codecs at all: they carry both
+        if v in (None, "") and a in (None, ""):
+            # FB progressive / Twitch clips report no codec metadata at all:
+            # these are muxed sources carrying both video and audio
             video = audio = True
+        else:
+            video = v not in (None, "", "none")
+            audio = a not in (None, "", "none")
         if not video and not audio:
             continue
         if video and audio:
