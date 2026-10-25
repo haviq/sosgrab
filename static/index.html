@@ -88,6 +88,12 @@
       <div class="up" id="up"></div>
     </div>
     <div class="links" id="links"></div>
+    <div class="links" id="mergeBox" style="display:none;padding-top:0">
+      <button id="mergeBtn" style="background:var(--accent2);color:#0d1117;font-weight:600;border:0;border-radius:10px;padding:12px;width:100%;cursor:pointer;font-family:inherit">
+        🎚 Merge video + audio into one MP4 (in your browser)
+      </button>
+      <div class="msg" id="mergeMsg" style="margin-top:8px"></div>
+    </div>
     <div class="note">Links open the platform CDN directly — use your browser's save function if it plays instead of downloading. Only grab content you own or have the rights to use.</div>
   </div>
   <div class="how">
@@ -133,16 +139,78 @@
         $('title').textContent=d.title;
         $('up').textContent=d.uploader?('by '+d.uploader):'';
         var h='';
+        var videoOnly=null, audioOnly=null, combined=false;
         d.formats.forEach(function(f){
+          if(f.video && f.has_sound) combined=true;
+          if(f.video && !f.has_sound && !videoOnly) videoOnly=f;
+          if(!f.video && !audioOnly) audioOnly=f;
           var icon = (f.video && f.has_sound) ? '🔊' : (f.video ? '🔇' : '♪');
           h+='<a class="dl'+(f.video?'':' audio')+'" href="'+f.url+'" target="_blank" rel="noopener">'+
              '<span class="q">'+icon+' '+f.label+'</span>'+
              '<span class="x">'+(f.ext||'').toUpperCase()+fmtSize(f.filesize)+' ↧</span></a>';
         });
         $('links').innerHTML=h||'<p style="color:var(--muted)">No downloadable formats found.</p>';
+        // show merge button only when the platform gave separate streams
+        var mb=$('mergeBox');
+        if(!combined && videoOnly && audioOnly){
+          mb.style.display='flex';
+          $('mergeMsg').textContent='';
+          setupMerge(videoOnly, audioOnly);
+        } else { mb.style.display='none'; }
       })
       .catch(function(){ btn.disabled=false; msg.className='msg err'; msg.textContent='Could not reach the service.'; });
   });
+  // ---- in-browser merge (ffmpeg.wasm) for platforms that split video/audio ----
+  var mergeReady=null;
+  function setupMerge(videoOnly, audioOnly){
+    var btn=$('mergeBtn'), mmsg=$('mergeMsg');
+    btn.onclick=function(){
+      if(!mergeReady){
+        mmsg.innerHTML='<span class="spin"></span>Loading merger (first time ~10 MB)...';
+        var s1=document.createElement('script'); s1.src='https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';
+        s1.onload=function(){
+          try{
+            var ff=new FFmpegWASM.FFmpeg();
+            ff.on('progress', function(p){ mmsg.textContent='Merging... '+Math.round((p.progress||0)*100)+'%'; });
+            ff.load({coreURL:'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+                     wasmURL:'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm'})
+              .then(function(){ mergeReady=ff; doMerge(); })
+              .catch(function(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed to load: '+(e&&e.message||e); });
+          }catch(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed: '+(e&&e.message||e); }
+        };
+        s1.onerror=function(){ mmsg.className='msg err'; mmsg.textContent='Could not load the merger (network).'; };
+        document.head.appendChild(s1);
+      } else { doMerge(); }
+      function doMerge(){
+        mmsg.className='msg'; mmsg.textContent='Downloading video & audio...';
+        btn.disabled=true;
+        Promise.all([
+          fetch(videoOnly.url).then(function(r){ if(!r.ok) throw new Error('video fetch '+r.status); return r.arrayBuffer(); }),
+          fetch(audioOnly.url).then(function(r){ if(!r.ok) throw new Error('audio fetch '+r.status); return r.arrayBuffer(); })
+        ]).then(function(bufs){
+          mmsg.textContent='Merging (fast copy, no re-encode)...';
+          var ff=mergeReady;
+          return Promise.all([
+            ff.writeFile('v.mp4', new Uint8Array(bufs[0])),
+            ff.writeFile('a.m4a', new Uint8Array(bufs[1]))
+          ]).then(function(){ return ff.exec(['-i','v.mp4','-i','a.m4a','-c','copy','-movflags','faststart','out.mp4']); })
+            .then(function(){ return ff.readFile('out.mp4'); });
+        }).then(function(data){
+          var blob=new Blob([data], {type:'video/mp4'});
+          var a=document.createElement('a');
+          a.href=URL.createObjectURL(blob);
+          a.download=(document.getElementById('title').textContent||'sosgrab')+'.mp4';
+          document.body.appendChild(a); a.click(); a.remove();
+          mmsg.textContent='✅ Merged! Check your downloads.';
+          btn.disabled=false;
+        }).catch(function(e){
+          mmsg.className='msg err';
+          mmsg.textContent='Merge failed: '+(e&&e.message||e)+'. (Some platforms block browser downloads of their CDN files — use the two links above instead.)';
+          btn.disabled=false;
+        });
+      }
+    };
+  }
 })();
 </script>
 </body>
