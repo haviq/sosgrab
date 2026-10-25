@@ -165,6 +165,11 @@
   function setupMerge(videoOnly, audioOnly){
     var btn=$('mergeBtn'), mmsg=$('mergeMsg');
     btn.onclick=function(){
+      if(!self.crossOriginIsolated){
+        mmsg.className='msg err';
+        mmsg.textContent='Your browser blocked the in-browser merger (SharedArrayBuffer). Update Brave/Chrome to the latest version, or download the two files below and merge locally.';
+        return;
+      }
       function doMerge(){
         mmsg.className='msg'; mmsg.textContent='Downloading video & audio...';
         btn.disabled=true;
