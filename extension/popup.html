@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<style>
+  :root{--bg:#0d1117;--panel:#161b27;--line:#262d3d;--text:#f8fafc;--muted:#8a91a5;--accent:#f59e0b;--ok:#22c55e;--err:#f87171}
+  *{box-sizing:border-box;margin:0;font-family:system-ui,sans-serif}
+  body{width:300px;background:var(--bg);color:var(--text);padding:14px}
+  h1{font-size:.95rem;margin-bottom:2px}h1 span{color:var(--accent)}
+  .site{color:var(--muted);font-size:.75rem;margin-bottom:10px;word-break:break-all}
+  .count{font-size:.8rem;margin-bottom:10px}
+  .count b{color:var(--ok)}
+  button{width:100%;border:0;border-radius:8px;padding:10px;font-weight:600;cursor:pointer;margin-bottom:8px;font-size:.85rem}
+  #copy{background:var(--accent);color:#0d1117}
+  #copyopen{background:var(--panel);color:var(--text);border:1px solid var(--line)}
+  .keys{font-size:.72rem;color:var(--muted);margin-bottom:8px;line-height:1.5}
+  .keys b{color:var(--ok)}
+  .miss{color:var(--err)}
+  .status{font-size:.75rem;min-height:1.2em;margin-bottom:6px}
+  .status.ok{color:var(--ok)}.status.err{color:var(--err)}
+  .priv{color:var(--muted);font-size:.66rem;line-height:1.4;border-top:1px solid var(--line);padding-top:8px}
+  .note{color:var(--muted);font-size:.72rem;line-height:1.5;margin-bottom:10px}
+</style>
+</head>
+<body>
+  <h1>Sos<span>Grab</span> Cookie Helper</h1>
+  <div class="site" id="site"></div>
+  <div class="count" id="count"></div>
+  <div class="keys" id="keys"></div>
+  <div class="status" id="status"></div>
+  <button id="copy">📋 Copy cookie header</button>
+  <button id="copyopen">📋 Copy + open SosGrab</button>
+  <p class="note">After copying: paste into the <b>Advanced</b> box on SosGrab, then Grab.</p>
+  <p class="priv">Cookies stay on your clipboard only — nothing is sent anywhere by this extension.</p>
+  <script src="popup.js"></script>
+</body>
+</html>

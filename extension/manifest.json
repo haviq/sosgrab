@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "SosGrab Cookie Helper",
+  "version": "1.0.0",
+  "description": "One-click cookie export for SosGrab — private reels support. Reads cookies only for facebook.com, instagram.com, tiktok.com, youtube.com.",
+  "permissions": ["cookies", "clipboardWrite", "tabs"],
+  "host_permissions": [
+    "*://*.facebook.com/*",
+    "*://*.instagram.com/*",
+    "*://*.tiktok.com/*",
+    "*://*.youtube.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "SosGrab Cookie Helper"
+  },
+  "icons": {
+    "128": "icon128.png"
+  }
+}
