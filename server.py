@@ -192,25 +192,42 @@ def api_resolve(req: ResolveReq, request: Request):
     for f in entry.get("formats") or []:
         if not f.get("url"):
             continue
-        v, a = f.get("vcodec", "none"), f.get("acodec", "none")
-        if v == "none" and a == "none":
+        v, a = f.get("vcodec"), f.get("acodec")
+        video = v not in (None, "none")
+        audio = a not in (None, "none")
+        if v == "" and a == "":
+            # FB progressive sources report no codecs at all: they carry both
+            video = audio = True
+        if not video and not audio:
             continue
-        label = f"{f.get('height') or f.get('abr') or '?'}p" if v != "none" else f"audio {f.get('abr') or ''}kbps"
+        if video and audio:
+            label = "MP4 with sound"
+            if f.get("height"):
+                label = f"MP4 {f['height']}p with sound"
+        elif video:
+            label = f"{f.get('height') or '?'}p (NO SOUND)"
+        else:
+            label = f"Audio {f.get('abr') or ''}kbps".replace("  ", " ")
         key = (label, f.get("ext"))
         if key in seen:
             continue
         seen.add(key)
         formats.append({
-            "label": label.strip(),
+            "label": label,
             "ext": f.get("ext"),
             "url": f["url"],
             "filesize": f.get("filesize") or f.get("filesize_approx"),
-            "video": v != "none",
+            "video": video,
+            "has_sound": audio,
         })
-    # best progressive first, then by height desc, then audio
+    # combined (video+audio in one file) always first, biggest first;
+    # then silent video-only; audio-only last
+    def height_of(f):
+        return int(re.sub(r"\D", "", f["label"].split("(")[0]) or 0)
     formats.sort(key=lambda f: (
-        0 if (f["video"] and f.get("ext") == "mp4") else 1,
-        -(int(re.sub(r"\D", "", f["label"]) or 0)),
+        0 if (f["video"] and f["has_sound"]) else (1 if f["video"] else 2),
+        -height_of(f),
+        -(f["filesize"] or 0),
     ))
     formats = formats[:6]
 

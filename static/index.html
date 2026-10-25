@@ -134,8 +134,9 @@
         $('up').textContent=d.uploader?('by '+d.uploader):'';
         var h='';
         d.formats.forEach(function(f){
+          var icon = (f.video && f.has_sound) ? '🔊' : (f.video ? '🔇' : '♪');
           h+='<a class="dl'+(f.video?'':' audio')+'" href="'+f.url+'" target="_blank" rel="noopener">'+
-             '<span class="q">'+(f.video?'▶ ':'♪ ')+f.label+'</span>'+
+             '<span class="q">'+icon+' '+f.label+'</span>'+
              '<span class="x">'+(f.ext||'').toUpperCase()+fmtSize(f.filesize)+' ↧</span></a>';
         });
         $('links').innerHTML=h||'<p style="color:var(--muted)">No downloadable formats found.</p>';
