@@ -64,6 +64,15 @@
     <button id="go" type="submit">Grab</button>
   </form>
   <div class="msg" id="msg"></div>
+  <details style="margin-top:12px">
+    <summary style="color:var(--muted);font-size:.85rem;cursor:pointer;user-select:none">Advanced — private reels (bring your own cookie)</summary>
+    <p style="color:var(--muted);font-size:.78rem;margin:10px 0 8px">
+      Private posts only visible to your account need your login session. Log in to the platform in your browser,
+      open DevTools (F12) → Network → copy the <code>Cookie</code> request header, paste it here. It is used for this
+      one extraction and <b>never stored on the server</b>. Treat it like a password.
+    </p>
+    <textarea id="cookies" rows="2" placeholder="sessionid=...; ds_user_id=...;" style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;font-size:.8rem;font-family:monospace;outline:none;resize:vertical"></textarea>
+  </details>
   <div class="card" id="card">
     <img id="thumb" class="thumb" alt="" />
     <div class="meta">
@@ -93,7 +102,7 @@
     msg.className='msg'; msg.innerHTML='';
     if(!url){ msg.textContent='Paste a link first.'; return; }
     btn.disabled=true; msg.innerHTML='<span class="spin"></span>Extracting links...';
-    fetch('/api/resolve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url})})
+    fetch('/api/resolve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url, cookies:document.getElementById('cookies').value.trim()})})
       .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
       .then(function(res){
         btn.disabled=false;

@@ -2,3 +2,6 @@ __pycache__/
 .env
 .vercel
 *.db
+
+.vercel
+.env*

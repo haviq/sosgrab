@@ -65,6 +65,7 @@ def validate_url(raw: str) -> str:
 
 class ResolveReq(BaseModel):
     url: str
+    cookies: str = ""
 
 
 PLATFORMS = [
@@ -92,6 +93,14 @@ def api_resolve(req: ResolveReq, request: Request):
         raise HTTPException(429, "Too many requests — wait a few minutes.")
     url = validate_url(req.url)
 
+    # bring-your-own-cookie: private reels/posts need the user's own session.
+    # The cookie is used for this one extraction and never stored or logged.
+    cookies = (req.cookies or "").strip()
+    if cookies and ("\n" in cookies or len(cookies) > 8000):
+        raise HTTPException(400, "Invalid cookie header.")
+    if cookies and not re.match(r'^[\x21-\x7e\x80-\xff; =]+$', cookies):
+        raise HTTPException(400, "Invalid cookie header.")
+
     import yt_dlp
     opts = {
         "quiet": True,
@@ -101,6 +110,8 @@ def api_resolve(req: ResolveReq, request: Request):
         "nocheckcertificate": False,
         "socket_timeout": 20,
     }
+    if cookies:
+        opts["http_headers"] = {"Cookie": cookies}
     try:
         with yt_dlp.YoutubeDL(opts) as ydl:
             info = ydl.extract_info(url, download=False)
@@ -108,8 +119,9 @@ def api_resolve(req: ResolveReq, request: Request):
         msg = str(e)
         if "Sign in to confirm" in msg or "bot" in msg.lower():
             raise HTTPException(502, "The platform is asking this server to verify it is not a bot for this video. Try another link or host it on a residential IP.")
-        if "Private" in msg or "login" in msg.lower():
-            raise HTTPException(403, "That content is private or requires a login.")
+        if "Private" in msg or "login" in msg.lower() or "rate limit" in msg.lower() or "429" in msg:
+            hint = " If this is your private content, paste your session cookie in Advanced." if not cookies else " Your cookie may have expired — refresh it and try again."
+            raise HTTPException(403, "That content is private or requires a login." + hint)
         if "Unsupported" in msg:
             raise HTTPException(400, "That URL is not supported.")
         raise HTTPException(502, "Extraction failed: " + msg[:180])
