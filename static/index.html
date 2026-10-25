@@ -173,11 +173,13 @@
           fetch(audioOnly.url).then(function(r){ if(!r.ok) throw new Error('audio fetch '+r.status); return r.arrayBuffer(); })
         ]).then(function(bufs){
           var ff=mergeReady;
-          ff.FS('writeFile','v.mp4', new Uint8Array(bufs[0]));
-          ff.FS('writeFile','a.m4a', new Uint8Array(bufs[1]));
-          mmsg.textContent='Merging (fast copy, no re-encode)...';
-          return ff.run('-i','v.mp4','-i','a.m4a','-c','copy','-movflags','faststart','out.mp4')
-            .then(function(){ return ff.FS('readFile','out.mp4'); });
+          return Promise.all([
+            ff.writeFile('v.mp4', new Uint8Array(bufs[0])),
+            ff.writeFile('a.m4a', new Uint8Array(bufs[1]))
+          ]).then(function(){
+            mmsg.textContent='Merging (fast copy, no re-encode)...';
+            return ff.exec(['-i','v.mp4','-i','a.m4a','-c','copy','-movflags','faststart','out.mp4']);
+          }).then(function(){ return ff.readFile('out.mp4'); });
         }).then(function(data){
           var blob=new Blob([data], {type:'video/mp4'});
           var a=document.createElement('a');
@@ -193,12 +195,15 @@
         });
       }
       if(!mergeReady){
-        mmsg.innerHTML='<span class="spin"></span>Loading merger core (~24 MB, first time only)...';
-        var s1=document.createElement('script'); s1.src='/static/ffmpeg011/ffmpeg.js';
+        mmsg.innerHTML='<span class="spin"></span>Loading merger (~32 MB, first time only)...';
+        var s1=document.createElement('script'); s1.src='/static/ffmpeg/ffmpeg.js';
         s1.onload=function(){
           try{
-            var ff=FFmpeg.createFFmpeg({ log:false, corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js' });
-            ff.load().then(function(){ mergeReady=ff; doMerge(); })
+            var ff=new FFmpegWASM.FFmpeg();
+            ff.load({ coreURL: location.origin+'/static/ffmpeg/ffmpeg-core.js',
+                      wasmURL: location.origin+'/static/ffmpeg/ffmpeg-core.wasm',
+                      classWorkerURL: location.origin+'/static/ffmpeg/814.ffmpeg.js' })
+              .then(function(){ mergeReady=ff; doMerge(); })
               .catch(function(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed to load: '+(e&&e.message||e); });
           }catch(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed: '+(e&&e.message||e); }
         };
