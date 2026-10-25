@@ -167,13 +167,14 @@
     btn.onclick=function(){
       if(!mergeReady){
         mmsg.innerHTML='<span class="spin"></span>Loading merger (first time ~10 MB)...';
-        var s1=document.createElement('script'); s1.src='https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js';
+        var s1=document.createElement('script'); s1.src='/static/ffmpeg/ffmpeg.js';
         s1.onload=function(){
           try{
             var ff=new FFmpegWASM.FFmpeg();
             ff.on('progress', function(p){ mmsg.textContent='Merging... '+Math.round((p.progress||0)*100)+'%'; });
-            ff.load({coreURL:'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-                     wasmURL:'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm'})
+            ff.load({coreURL:'/static/ffmpeg/ffmpeg-core.js',
+                     wasmURL:'/static/ffmpeg/ffmpeg-core.wasm',
+                     classWorkerURL:'/static/ffmpeg/814.ffmpeg.js'})
               .then(function(){ mergeReady=ff; doMerge(); })
               .catch(function(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed to load: '+(e&&e.message||e); });
           }catch(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed: '+(e&&e.message||e); }
