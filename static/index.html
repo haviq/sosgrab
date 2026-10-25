@@ -160,28 +160,11 @@
       })
       .catch(function(){ btn.disabled=false; msg.className='msg err'; msg.textContent='Could not reach the service.'; });
   });
-  // ---- in-browser merge (ffmpeg.wasm) for platforms that split video/audio ----
+  // ---- in-browser merge (ffmpeg.wasm 0.11) for platforms that split video/audio ----
   var mergeReady=null;
   function setupMerge(videoOnly, audioOnly){
     var btn=$('mergeBtn'), mmsg=$('mergeMsg');
     btn.onclick=function(){
-      if(!mergeReady){
-        mmsg.innerHTML='<span class="spin"></span>Loading merger (first time ~10 MB)...';
-        var s1=document.createElement('script'); s1.src='/static/ffmpeg/ffmpeg.js';
-        s1.onload=function(){
-          try{
-            var ff=new FFmpegWASM.FFmpeg();
-            ff.on('progress', function(p){ mmsg.textContent='Merging... '+Math.round((p.progress||0)*100)+'%'; });
-            ff.load({coreURL: location.origin + '/static/ffmpeg/ffmpeg-core.js',
-                     wasmURL: location.origin + '/static/ffmpeg/ffmpeg-core.wasm',
-                     classWorkerURL: location.origin + '/static/ffmpeg/814.ffmpeg.js'})
-              .then(function(){ mergeReady=ff; doMerge(); })
-              .catch(function(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed to load: '+(e&&e.message||e); });
-          }catch(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed: '+(e&&e.message||e); }
-        };
-        s1.onerror=function(){ mmsg.className='msg err'; mmsg.textContent='Could not load the merger (network).'; };
-        document.head.appendChild(s1);
-      } else { doMerge(); }
       function doMerge(){
         mmsg.className='msg'; mmsg.textContent='Downloading video & audio...';
         btn.disabled=true;
@@ -189,13 +172,12 @@
           fetch(videoOnly.url).then(function(r){ if(!r.ok) throw new Error('video fetch '+r.status); return r.arrayBuffer(); }),
           fetch(audioOnly.url).then(function(r){ if(!r.ok) throw new Error('audio fetch '+r.status); return r.arrayBuffer(); })
         ]).then(function(bufs){
-          mmsg.textContent='Merging (fast copy, no re-encode)...';
           var ff=mergeReady;
-          return Promise.all([
-            ff.writeFile('v.mp4', new Uint8Array(bufs[0])),
-            ff.writeFile('a.m4a', new Uint8Array(bufs[1]))
-          ]).then(function(){ return ff.exec(['-i','v.mp4','-i','a.m4a','-c','copy','-movflags','faststart','out.mp4']); })
-            .then(function(){ return ff.readFile('out.mp4'); });
+          ff.FS('writeFile','v.mp4', new Uint8Array(bufs[0]));
+          ff.FS('writeFile','a.m4a', new Uint8Array(bufs[1]));
+          mmsg.textContent='Merging (fast copy, no re-encode)...';
+          return ff.run('-i','v.mp4','-i','a.m4a','-c','copy','-movflags','faststart','out.mp4')
+            .then(function(){ return ff.FS('readFile','out.mp4'); });
         }).then(function(data){
           var blob=new Blob([data], {type:'video/mp4'});
           var a=document.createElement('a');
@@ -210,6 +192,19 @@
           btn.disabled=false;
         });
       }
+      if(!mergeReady){
+        mmsg.innerHTML='<span class="spin"></span>Loading merger core (~24 MB, first time only)...';
+        var s1=document.createElement('script'); s1.src='/static/ffmpeg011/ffmpeg.js';
+        s1.onload=function(){
+          try{
+            var ff=FFmpeg.createFFmpeg({ log:false, corePath: location.origin+'/static/ffmpeg011/ffmpeg-core.js' });
+            ff.load().then(function(){ mergeReady=ff; doMerge(); })
+              .catch(function(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed to load: '+(e&&e.message||e); });
+          }catch(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed: '+(e&&e.message||e); }
+        };
+        s1.onerror=function(){ mmsg.className='msg err'; mmsg.textContent='Could not load the merger (network).'; };
+        document.head.appendChild(s1);
+      } else { doMerge(); }
     };
   }
 })();
