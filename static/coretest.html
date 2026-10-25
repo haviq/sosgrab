@@ -1,9 +1,10 @@
 <!DOCTYPE html><html><body><pre id="out">testing...</pre>
+<script src="/static/ffmpeg/ffmpeg.js"></script>
 <script>
 (function(){
   var out = function(m){ document.getElementById('out').textContent += '\n' + m; };
+  out('FFmpegWASM: ' + (typeof FFmpegWASM));
   var origin = location.origin;
-  // EXACT real flow: worker from classWorkerURL, LOAD message with our URLs
   var ff = new FFmpegWASM.FFmpeg();
   ff.on('log', function(l){ out('[log] ' + l.message); });
   ff.load({
@@ -14,5 +15,4 @@
     .catch(function(e){ out('❌ LOAD FAIL: ' + (e && e.message || e)); });
 })();
 </script>
-<script src="/static/ffmpeg/ffmpeg.js"></script>
-<script src="/static/ffmpeg/ffmpeg.js"></script></body></html>
+</body></html>
