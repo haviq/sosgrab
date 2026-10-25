@@ -82,6 +82,15 @@ PLATFORMS = [
 CHROME_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
              "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
 
+# Zero-effort mode: a saved session cookie per platform, set as env vars
+# (FB_COOKIE / IG_COOKIE / TT_COOKIE). Applied automatically when the
+# request carries no per-request cookie. Rotate by updating the env var.
+SAVED_COOKIES = {
+    "facebook": os.environ.get("FB_COOKIE", ""),
+    "instagram": os.environ.get("IG_COOKIE", ""),
+    "tiktok": os.environ.get("TT_COOKIE", ""),
+}
+
 
 def _netscape_jar(header: str, host: str) -> Optional[str]:
     """Convert a raw 'k=v; k2=v2' Cookie header into a Netscape-format
@@ -147,6 +156,14 @@ def api_resolve(req: ResolveReq, request: Request):
             opts["cookiefile"] = jar
         else:
             opts["http_headers"] = {"Cookie": cookies}
+    else:
+        # zero-effort fallback: platform cookie saved on the server
+        plat = platform_of(url).lower().split(" ")[0]
+        saved = SAVED_COOKIES.get(plat, "")
+        if saved:
+            jar = _netscape_jar(saved, host)
+            if jar:
+                opts["cookiefile"] = jar
     try:
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
