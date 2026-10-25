@@ -197,7 +197,7 @@
         var s1=document.createElement('script'); s1.src='/static/ffmpeg011/ffmpeg.js';
         s1.onload=function(){
           try{
-            var ff=FFmpeg.createFFmpeg({ log:false, corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.11.0/dist/ffmpeg-core.js' });
+            var ff=FFmpeg.createFFmpeg({ log:false, corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js' });
             ff.load().then(function(){ mergeReady=ff; doMerge(); })
               .catch(function(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed to load: '+(e&&e.message||e); });
           }catch(e){ mmsg.className='msg err'; mmsg.textContent='Merger failed: '+(e&&e.message||e); }
