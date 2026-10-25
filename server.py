@@ -252,6 +252,9 @@ async def _headers(request: Request, call_next):
     resp = await call_next(request)
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
+    # cross-origin isolation: SharedArrayBuffer for the in-browser ffmpeg merge
+    resp.headers["Cross-Origin-Opener-Policy"] = "same-origin"
+    resp.headers["Cross-Origin-Embedder-Policy"] = "credentialless"
     return resp
 
 
