@@ -64,14 +64,21 @@
     <button id="go" type="submit">Grab</button>
   </form>
   <div class="msg" id="msg"></div>
-  <details style="margin-top:12px">
+  <details style="margin-top:12px" id="advBox">
     <summary style="color:var(--muted);font-size:.85rem;cursor:pointer;user-select:none">Advanced — private reels (bring your own cookie)</summary>
     <p style="color:var(--muted);font-size:.78rem;margin:10px 0 8px">
-      Private posts only visible to your account need your login session. Log in to the platform in your browser,
-      open DevTools (F12) → Network → copy the <code>Cookie</code> request header, paste it here. It is used for this
-      one extraction and <b>never stored on the server</b>. Treat it like a password.
+      Private posts (and most Facebook reels) need your login session. Log in to the platform in your browser, then
+      press <b>F12 → Network</b>, refresh the page, click the first request to the site, and copy the whole
+      <code>Cookie</code> request header. It is used for this one extraction and <b>never stored on the server</b>.
     </p>
-    <textarea id="cookies" rows="2" placeholder="sessionid=...; ds_user_id=...;" style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;font-size:.8rem;font-family:monospace;outline:none;resize:vertical"></textarea>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.75rem;color:var(--muted);margin-bottom:10px">
+      <div><b style="color:var(--text)">Facebook</b> — cookie harus memuat <code>c_user=</code> dan <code>xs=</code></div>
+      <div><b style="color:var(--text)">Instagram</b> — harus memuat <code>sessionid=</code></div>
+      <div><b style="color:var(--text)">TikTok</b> — <code>sessionid_tt=</code> atau <code>sessionid=</code></div>
+      <div><b style="color:var(--text)">YouTube</b> — jarang perlu; pakai bila muncul "confirm you're not a bot"</div>
+    </div>
+    <textarea id="cookies" rows="2" placeholder="c_user=1234; xs=3a:abcdef...; datr=..." style="width:100%;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;font-size:.8rem;font-family:monospace;outline:none;resize:vertical"></textarea>
+    <div class="msg" id="cookieHint" style="margin-top:8px"></div>
   </details>
   <div class="card" id="card">
     <img id="thumb" class="thumb" alt="" />
@@ -101,6 +108,16 @@
     var msg=$('msg'), btn=$('go');
     msg.className='msg'; msg.innerHTML='';
     if(!url){ msg.textContent='Paste a link first.'; return; }
+    // soft pre-check: platform vs cookie keys (non-blocking warning)
+    var hint=$('cookieHint'), ck=$('cookies').value.trim();
+    hint.textContent='';
+    var needs={facebook:['c_user','xs'],'fb.watch':['c_user','xs'],'instagram':['sessionid'],'tiktok':['sessionid']};
+    for(var pat in needs){
+      if(new RegExp(pat,'i').test(url) && ck){
+        var missing=needs[pat].filter(function(k){return ck.toLowerCase().indexOf(k.toLowerCase()+'=')<0;});
+        if(missing.length){ hint.style.color='var(--err)'; hint.textContent='Cookie looks incomplete for this platform — missing: '+missing.join(', ')+'. It may still fail.'; }
+      }
+    }
     btn.disabled=true; msg.innerHTML='<span class="spin"></span>Extracting links...';
     fetch('/api/resolve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url, cookies:document.getElementById('cookies').value.trim()})})
       .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})})
