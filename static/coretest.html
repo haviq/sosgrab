@@ -15,7 +15,7 @@
   var ff = new FFmpegWASM.FFmpeg();
   ff.on('log', function(l){ out('[log] ' + l.message); });
   ff.load({
-    coreURL: origin + '/static/ffmpeg/ffmpeg-core.js',
+    coreURL: origin + '/static/ffmpeg/esm/ffmpeg-core.js',
     wasmURL: origin + '/static/ffmpeg/ffmpeg-core.wasm',
     classWorkerURL: origin + '/static/ffmpeg/814.ffmpeg.js'
   }).then(function(){ out('✅ LOAD OK — ffmpeg core loaded!'); })
