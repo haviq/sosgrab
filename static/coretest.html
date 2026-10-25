@@ -4,6 +4,13 @@
 (function(){
   var out = function(m){ document.getElementById('out').textContent += '\n' + m; };
   out('FFmpegWASM: ' + (typeof FFmpegWASM));
+  // direct importScripts test inside a real worker
+  var wcode = "try { importScripts('" + origin + "/static/ffmpeg/ffmpeg-core.js'); postMessage('DIRECT-IMPORT-OK'); } catch(e) { postMessage('DIRECT-ERR: ' + e.message + ' || ' + String(e.stack||'').slice(0,200)); }";
+  try {
+    var w = new Worker(URL.createObjectURL(new Blob([wcode], {type:'application/javascript'})));
+    w.onmessage = function(e){ out('[worker] ' + e.data); };
+    w.onerror = function(e){ out('[worker onerror] ' + e.message); };
+  } catch(e){ out('[worker create] ' + e.message); }
   var origin = location.origin;
   var ff = new FFmpegWASM.FFmpeg();
   ff.on('log', function(l){ out('[log] ' + l.message); });
