@@ -4,7 +4,7 @@ Extract-and-redirect architecture: the server never proxies media bytes
 (serverless response limits make that impossible); it resolves direct
 CDN URLs with yt-dlp and hands them to the client.
 """
-import os, re, ipaddress, socket
+import os, re, ipaddress, socket, tempfile
 from typing import Optional
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -79,6 +79,34 @@ PLATFORMS = [
 ]
 
 
+CHROME_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+             "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+
+
+def _netscape_jar(header: str, host: str) -> Optional[str]:
+    """Convert a raw 'k=v; k2=v2' Cookie header into a Netscape-format
+    cookie file — the only cookie transport yt-dlp reliably honors."""
+    pairs = []
+    for part in header.split(";"):
+        if "=" not in part:
+            continue
+        k, v = part.split("=", 1)
+        k, v = k.strip(), v.strip()
+        if k and re.match(r"^[\w\[\].-]+$", k):
+            pairs.append((k, v))
+    if not pairs:
+        return None
+    dom = "." + re.sub(r"^www\.", "", host)
+    lines = ["# Netscape HTTP Cookie File"]
+    for k, v in pairs:
+        lines.append(f"{dom}\tTRUE\t/\tTRUE\t2147483647\t{k}\t{v}")
+    fd = tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False,
+                                     dir="/tmp" if os.path.isdir("/tmp") else None)
+    fd.write("\n".join(lines) + "\n")
+    fd.close()
+    return fd.name
+
+
 def platform_of(url: str) -> str:
     for pat, name in PLATFORMS:
         if re.search(pat, url, re.I):
@@ -102,6 +130,7 @@ def api_resolve(req: ResolveReq, request: Request):
         raise HTTPException(400, "Invalid cookie header.")
 
     import yt_dlp
+    host = re.match(r"^https?://([^/:?#]+)", url, re.I).group(1).lower()
     opts = {
         "quiet": True,
         "no_warnings": True,
@@ -109,14 +138,27 @@ def api_resolve(req: ResolveReq, request: Request):
         "skip_download": True,
         "nocheckcertificate": False,
         "socket_timeout": 20,
+        "user_agent": CHROME_UA,
     }
+    jar = None
     if cookies:
-        opts["http_headers"] = {"Cookie": cookies}
+        jar = _netscape_jar(cookies, host)
+        if jar:
+            opts["cookiefile"] = jar
+        else:
+            opts["http_headers"] = {"Cookie": cookies}
     try:
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+        finally:
+            if jar:
+                try: os.unlink(jar)
+                except Exception: pass
     except Exception as e:
         msg = str(e)
+        if "Cannot parse data" in msg:
+            raise HTTPException(403, "Facebook refused the request even with your cookie. Re-login to Facebook, copy a FRESH cookie (F12 → Network → first request → Cookie header) and try again. The session may have expired or been logged out remotely.")
         if "Sign in to confirm" in msg or "bot" in msg.lower():
             raise HTTPException(502, "The platform is asking this server to verify it is not a bot for this video. Try another link or host it on a residential IP.")
         if "Private" in msg or "login" in msg.lower() or "rate limit" in msg.lower() or "429" in msg:
